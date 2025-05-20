@@ -5,9 +5,9 @@ function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const navItems = [
-    { name: "Главная", href: "#" },
-    { name: "Галерея", href: "#" },
-    { name: "Контакты", href: "#" },
+    { name: "Главная", href: "/" },
+    { name: "Галерея", href: "/gallery" },
+    { name: "Контакты", href: "/contacts" },
   ]
 
   return (
@@ -16,11 +16,11 @@ function Navigation() {
         <div className="navbar">
           {/* Логотип */}
           <div className="logo">
-            <a href="#">MY WEBSITE</a>
+            <a href="/">MY WEBSITE</a>
           </div>
 
           {/* Кнопка мобильного меню */}
-          <button className="menu-button" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          <button className="menu-button" type="button" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             Меню
           </button>
 
