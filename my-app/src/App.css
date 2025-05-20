@@ -27,6 +27,17 @@ h2 {
   text-align: center;
 }
 
+.countdown {
+  font-size: 1.2rem;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.animated-svg {
+
+}
+
+
 .section {
   padding: 3rem 0;
 }

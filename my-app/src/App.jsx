@@ -3,6 +3,8 @@ import Navigation from "./components/Navigation"
 import Gallery from "./components/Gallery"
 import FeedbackForm from "./components/FeedbackForm"
 import TimedPopup from "./components/TimedPopup"
+import Countdown from "./components/Countdown"
+import AnimatedSvg from "./components/AnimatedSvg"
 import photo from "./images/photo.png"
 import photo2 from "./images/photo2.png"
 import photo3 from "./images/photo3.png"
@@ -44,6 +46,9 @@ function App() {
           <Gallery images={images} />
         </div>
       </section>
+      {/* Обратный отсчёт до экзамена */}
+      <Countdown targetDate="2025-07-15T09:00:00" />
+
 
       {/* Секция контактов */}
       <section id="contacts" className="section bg-light">
@@ -55,6 +60,8 @@ function App() {
         </div>
       </section>
 
+      {/* Анимированный SVG */}
+      <AnimatedSvg />
       <TimedPopup delayMs={5000} message="Хотите подписаться на нашу рассылку?" />
     </div>
   )
