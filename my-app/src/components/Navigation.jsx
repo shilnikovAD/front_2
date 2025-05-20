@@ -5,9 +5,9 @@ function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const navItems = [
-    { name: "Главная", href: "/" },
-    { name: "Галерея", href: "/gallery" },
-    { name: "Контакты", href: "/contacts" },
+    { name: "Главная", href: "#home" },
+    { name: "Галерея", href: "#gallery" },
+    { name: "Контакты", href: "#contacts" },
   ]
 
   return (
