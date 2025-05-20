@@ -1,39 +1,83 @@
+import { useState, useEffect } from "react"
 
-import { useState } from "react"
-
+/**
+ * Gallery component with low-res thumbnail images and high-res popup images
+ * props.images: array of objects { id, thumbSrc, src, alt }
+ */
 function Gallery({ images }) {
-  const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedIndex, setSelectedIndex] = useState(null)
 
-  function openImage(image) {
-    setSelectedImage(image)
+  function openImage(index) {
+    setSelectedIndex(index)
     document.body.style.overflow = "hidden"
   }
 
   function closeImage() {
-    setSelectedImage(null)
+    setSelectedIndex(null)
     document.body.style.overflow = "auto"
   }
 
+  function showPrev(e) {
+    if (e) e.stopPropagation()
+    setSelectedIndex(prev => (prev > 0 ? prev - 1 : images.length - 1))
+  }
+
+  function showNext(e) {
+    if (e) e.stopPropagation()
+    setSelectedIndex(prev => (prev < images.length - 1 ? prev + 1 : 0))
+  }
+
+  // Keyboard navigation: ←, →, Esc
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (selectedIndex !== null) {
+        if (e.key === "ArrowLeft") showPrev()
+        else if (e.key === "ArrowRight") showNext()
+        else if (e.key === "Escape") closeImage()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectedIndex])
+
+  const currentImage = selectedIndex !== null ? images[selectedIndex] : null
+
   return (
     <div className="gallery">
-      {/* Сетка галереи */}
       <div className="gallery-grid">
-        {images.map((image) => (
-          <div key={image.id} className="gallery-item" onClick={() => openImage(image)}>
-            <img src={image.src || "/placeholder.svg"} alt={image.alt} className="gallery-image" />
+        {images.map((image, index) => (
+          <div
+            key={image.id}
+            className="gallery-item"
+            onClick={() => openImage(index)}
+          >
+            {/* Low-res thumbnail */}
+            <img
+              src={image.thumbSrc || image.src}
+              alt={image.alt}
+              className="gallery-image"
+              loading="lazy"
+            />
           </div>
         ))}
       </div>
 
-      {/* Попап с изображением */}
-      {selectedImage && (
+      {currentImage && (
         <div className="image-popup" onClick={closeImage}>
-          <button className="close-button" onClick={closeImage}>
-            Закрыть
-          </button>
+          <div className="popup-content" onClick={e => e.stopPropagation()}>
+            <button onClick={showPrev} className="nav-button prev">←</button>
 
-          <div className="popup-image-container">
-            <img src={selectedImage.src || "/placeholder.svg"} alt={selectedImage.alt} className="popup-image" />
+            <div className="popup-image-container">
+              {/* High-res full image */}
+              <img
+                src={currentImage.src}
+                alt={currentImage.alt}
+                className="popup-image"
+              />
+            </div>
+
+            <button onClick={showNext} className="nav-button next">→</button>
+            <button className="close-button" onClick={closeImage}>Закрыть</button>
           </div>
         </div>
       )}

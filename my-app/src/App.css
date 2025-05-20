@@ -37,6 +37,33 @@ h2 {
 .section {
   padding: 3rem 0;
 }
+.popup-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 90vw;
+  max-height: 90vh;
+  margin: auto;
+}
+
+.nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.7);
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  z-index: 1001; /* чтобы кнопки были поверх картинки */
+}
+.nav-button.prev {
+  left: 10px;
+}
+.nav-button.next {
+  right: 10px;
+}
 
 .bg-light {
   background-color: #f8f9fa;
