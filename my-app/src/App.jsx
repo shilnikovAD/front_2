@@ -6,14 +6,14 @@ import TimedPopup from "./components/TimedPopup"
 
 function App() {
   const images = [
-    { id: 1, src: "${baseUrl}/images/photo.png", alt: "Фото 1" },
-    { id: 2, src: "${baseUrl}/images/photo2.png", alt: "Фото 2" },
-    { id: 3, src: "${baseUrl}/images/photo3.png", alt: "Фото 3" },
-    { id: 4, src: "${baseUrl}/images/photo5.png", alt: "Фото 4" },
-    { id: 5, src: "${baseUrl}/images/photo6.png", alt: "Фото 5" },
-    { id: 6, src: "${baseUrl}/images/photo7.png", alt: "Фото 6" },
-    { id: 7, src: "${baseUrl}/images/photo4.png", alt: "Фото 7" },
-    { id: 8, src: "${baseUrl}/images/photo8.png", alt: "Фото 8" }
+    { id: 1, src: "public/images/photo.png", alt: "Фото 1" },
+    { id: 2, src: "public/images/photo2.png", alt: "Фото 2" },
+    { id: 3, src: "public/images/photo3.png", alt: "Фото 3" },
+    { id: 4, src: "public/images/photo5.png", alt: "Фото 4" },
+    { id: 5, src: "public/images/photo6.png", alt: "Фото 5" },
+    { id: 6, src: "public/images/photo7.png", alt: "Фото 6" },
+    { id: 7, src: "public/images/photo4.png", alt: "Фото 7" },
+    { id: 8, src: "public/images/photo8.png", alt: "Фото 8" }
   ]
 
   return (
