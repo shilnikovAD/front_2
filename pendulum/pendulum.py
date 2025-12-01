@@ -5,7 +5,7 @@ Physical Pendulum Simulation using RK4 numerical integration
 
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Использовать backend без GUI
+matplotlib.use('Agg')  # Backend без GUI для сохранения графиков в файл
 import matplotlib.pyplot as plt
 
 
@@ -140,7 +140,9 @@ def analyze_results(t_data, theta_data, E_data, params, theta0_deg):
     T_theory = T_small(params)
     
     E0 = E_data[0]
-    E_variation = ((E_data.max() - E_data.min()) / E0 * 100) if E0 > 1e-10 else 0
+    E_max = E_data.max()
+    E_min = E_data.min()
+    E_variation = ((E_max - E_min) / E0 * 100) if E0 > 1e-10 else 0
     
     print("\n" + "="*50)
     print("РЕЗУЛЬТАТЫ СИМУЛЯЦИИ")
@@ -227,7 +229,6 @@ def plot_results(t_data, theta_data, omega_data, KE_data, PE_data, E_data, param
     plt.tight_layout()
     plt.savefig('pendulum_results.png', dpi=150)
     print("\nГрафики сохранены в файл: pendulum_results.png")
-    # plt.show()  # Закомментировано для работы без GUI
 
 
 def main():
@@ -313,8 +314,7 @@ def main():
     try:
         plot_results(t_data, theta_data, omega_data, KE_data, PE_data, E_data, params)
     except Exception as e:
-        print(f"\nНе удалось отобразить графики: {e}")
-        print("Графики сохранены в файл pendulum_results.png")
+        print(f"\nНе удалось построить графики: {e}")
 
 
 if __name__ == "__main__":
