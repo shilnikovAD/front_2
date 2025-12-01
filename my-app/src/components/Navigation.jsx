@@ -7,7 +7,6 @@ function Navigation() {
   const navItems = [
     { name: "Главная", href: "#home" },
     { name: "Галерея", href: "#gallery" },
-    { name: "Маятник", href: "#pendulum" },
     { name: "Контакты", href: "#contacts" },
   ]
 
