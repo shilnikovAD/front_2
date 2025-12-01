@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import './PhysicalPendulum.css'
 
 // Константы
@@ -80,6 +80,14 @@ function T_small(params) {
 
 // Эллиптический интеграл первого рода (приближённый расчёт)
 function ellipticK(k) {
+  // Обработка граничных случаев
+  if (k >= 1) {
+    // При k = 1 интеграл расходится (бесконечность)
+    return Infinity
+  }
+  if (k <= 0) {
+    return Math.PI / 2
+  }
   // Используем ряд AGM (арифметико-геометрическое среднее)
   let a = 1
   let b = Math.sqrt(1 - k * k)
@@ -106,9 +114,13 @@ function detectPeriods(data) {
   for (let i = 1; i < data.length; i++) {
     // Положительный переход через ноль
     if (data[i - 1].theta < 0 && data[i].theta >= 0) {
-      // Линейная интерполяция
-      const t = data[i - 1].t + (0 - data[i - 1].theta) / (data[i].theta - data[i - 1].theta) * (data[i].t - data[i - 1].t)
-      zeroCrossings.push(t)
+      // Защита от деления на ноль
+      const dTheta = data[i].theta - data[i - 1].theta
+      if (Math.abs(dTheta) > 1e-10) {
+        // Линейная интерполяция
+        const t = data[i - 1].t + (0 - data[i - 1].theta) / dTheta * (data[i].t - data[i - 1].t)
+        zeroCrossings.push(t)
+      }
     }
   }
   
@@ -146,20 +158,19 @@ function PhysicalPendulum() {
   const energyCanvasRef = useRef(null)
   const animationRef = useRef(null)
   
-  // Вычисление параметров на основе формы
-  const getPhysicsParams = useCallback(() => {
-    let params
+  // Мемоизированные параметры физики
+  const params = useMemo(() => {
+    let baseParams
     if (shape === 'custom') {
-      params = PRESETS.custom.getParams(mass, size, customI, customD)
+      baseParams = PRESETS.custom.getParams(mass, size, customI, customD)
     } else {
-      params = PRESETS[shape].getParams(mass, size)
+      baseParams = PRESETS[shape].getParams(mass, size)
     }
-    return { ...params, m: mass, b: friction }
+    return { ...baseParams, m: mass, b: friction }
   }, [shape, mass, size, customI, customD, friction])
   
   // Запуск симуляции
   const runSimulation = useCallback(() => {
-    const params = getPhysicsParams()
     const theta0Rad = theta0 * Math.PI / 180
     
     const data = []
@@ -185,29 +196,30 @@ function PhysicalPendulum() {
     const T_theory_small = T_small(params)
     const T_theory_exact = T_exact(theta0Rad, params)
     
-    // Анализ энергии
+    // Анализ энергии (с защитой от деления на ноль)
     const E0 = data[0].E
     const E_final = data[data.length - 1].E
     const E_max = Math.max(...data.map(d => d.E))
     const E_min = Math.min(...data.map(d => d.E))
-    const E_variation = ((E_max - E_min) / E0) * 100
+    const E_variation = E0 > 1e-10 ? ((E_max - E_min) / E0) * 100 : 0
+    const energyLoss = E0 > 1e-10 ? ((E0 - E_final) / E0) * 100 : 0
     
     setAnalysisResults({
       periods,
       avgPeriod,
       T_theory_small,
       T_theory_exact,
-      errorSmall: avgPeriod ? Math.abs(avgPeriod - T_theory_small) / T_theory_small * 100 : null,
-      errorExact: avgPeriod ? Math.abs(avgPeriod - T_theory_exact) / T_theory_exact * 100 : null,
+      errorSmall: avgPeriod && T_theory_small > 0 ? Math.abs(avgPeriod - T_theory_small) / T_theory_small * 100 : null,
+      errorExact: avgPeriod && T_theory_exact > 0 && isFinite(T_theory_exact) ? Math.abs(avgPeriod - T_theory_exact) / T_theory_exact * 100 : null,
       E0,
       E_final,
       E_variation,
-      energyLoss: ((E0 - E_final) / E0) * 100
+      energyLoss
     })
     
     setSimulationData(data)
     setCurrentIndex(0)
-  }, [getPhysicsParams, theta0, omega0, dt, duration])
+  }, [params, theta0, omega0, dt, duration])
   
   // Отрисовка маятника на canvas
   const drawPendulum = useCallback(() => {
@@ -267,8 +279,8 @@ function PhysicalPendulum() {
     ctx.fill()
     
     // Метка центра масс
-    const cmX = pivotX + (pendulumLength * getPhysicsParams().d / size) * Math.sin(theta)
-    const cmY = pivotY + (pendulumLength * getPhysicsParams().d / size) * Math.cos(theta)
+    const cmX = pivotX + (pendulumLength * params.d / size) * Math.sin(theta)
+    const cmY = pivotY + (pendulumLength * params.d / size) * Math.cos(theta)
     ctx.beginPath()
     ctx.arc(cmX, cmY, 4, 0, Math.PI * 2)
     ctx.fillStyle = '#e74c3c'
@@ -283,7 +295,7 @@ function PhysicalPendulum() {
       ctx.fillText(`θ = ${(data.theta * 180 / Math.PI).toFixed(1)}°`, 10, 40)
       ctx.fillText(`ω = ${data.omega.toFixed(2)} рад/с`, 10, 60)
     }
-  }, [simulationData, currentIndex, theta0, shape, size, getPhysicsParams])
+  }, [simulationData, currentIndex, theta0, shape, size, params])
   
   // Отрисовка графиков
   const drawGraphs = useCallback(() => {
@@ -472,24 +484,33 @@ function PhysicalPendulum() {
     ctx.fillText('PE', width - padding - 80, padding + 50)
   }, [simulationData, currentIndex])
   
-  // Анимация
+  // Анимация с использованием requestAnimationFrame
   useEffect(() => {
     if (isRunning && simulationData.length > 0) {
       const step = Math.max(1, Math.floor(simulationData.length / (duration * 60)))
-      animationRef.current = setInterval(() => {
-        setCurrentIndex(prev => {
-          if (prev + step >= simulationData.length) {
-            setIsRunning(false)
-            return simulationData.length - 1
-          }
-          return prev + step
-        })
-      }, 16)
+      let lastTime = 0
+      const targetInterval = 16 // ~60 FPS
+      
+      const animate = (currentTime) => {
+        if (currentTime - lastTime >= targetInterval) {
+          lastTime = currentTime
+          setCurrentIndex(prev => {
+            if (prev + step >= simulationData.length) {
+              setIsRunning(false)
+              return simulationData.length - 1
+            }
+            return prev + step
+          })
+        }
+        animationRef.current = requestAnimationFrame(animate)
+      }
+      
+      animationRef.current = requestAnimationFrame(animate)
     }
     
     return () => {
       if (animationRef.current) {
-        clearInterval(animationRef.current)
+        cancelAnimationFrame(animationRef.current)
       }
     }
   }, [isRunning, simulationData, duration])
@@ -531,8 +552,6 @@ function PhysicalPendulum() {
       setIsRunning(true)
     }, 50)
   }
-  
-  const params = getPhysicsParams()
   
   return (
     <div className="pendulum-container">
