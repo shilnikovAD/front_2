@@ -5,6 +5,7 @@ import FeedbackForm from "./components/FeedbackForm"
 import TimedPopup from "./components/TimedPopup"
 import Countdown from "./components/Countdown"
 import AnimatedSvg from "./components/AnimatedSvg"
+import PhysicalPendulum from "./components/PhysicalPendulum"
 import photo from "./images/full/photo.png"
 import photo2 from "./images/full/photo2.png"
 import photo3 from "./images/full/photo3.png"
@@ -56,6 +57,10 @@ function App() {
       {/* Обратный отсчёт до экзамена */}
       <Countdown targetDate="2025-07-15T09:00:00" />
 
+      {/* Секция физического маятника */}
+      <section id="pendulum" className="section">
+        <PhysicalPendulum />
+      </section>
 
       {/* Секция контактов */}
       <section id="contacts" className="section bg-light">
