@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>М6 — Фильтрация сигналов (RC ФНЧ)</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- MathJax для формул -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]] },
+      startup: { typeset: false }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    a { color: #60a5fa; }
+
+    /* ── Layout ───────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+
+    header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+      border-bottom: 1px solid #334155;
+      padding: 1.5rem 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #93c5fd; }
+    header p  { font-size: .85rem; color: #94a3b8; margin-top: .2rem; }
+
+    nav { display: flex; gap: 1rem; margin-top: .8rem; flex-wrap: wrap; }
+    nav a {
+      color: #94a3b8; text-decoration: none; font-size: .85rem;
+      padding: .3rem .7rem; border-radius: 6px;
+      transition: background .2s, color .2s;
+    }
+    nav a:hover, nav a.active { background: #1e40af; color: #fff; }
+
+    section { padding: 2.5rem 0; }
+    section + section { border-top: 1px solid #1e293b; }
+    h2 {
+      font-size: 1.2rem; color: #60a5fa; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    h2 .badge {
+      background: #1e40af; color: #bfdbfe; font-size: .7rem;
+      padding: .15rem .5rem; border-radius: 999px; font-weight: 600;
+    }
+    h3 { font-size: 1rem; color: #94a3b8; margin: 1rem 0 .5rem; }
+
+    /* ── Card ─────────────────────────────────────────────── */
+    .card {
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 12px; padding: 1.25rem;
+    }
+    .card + .card { margin-top: 1rem; }
+
+    /* ── Formula box ──────────────────────────────────────── */
+    .formula-box {
+      background: #0f172a; border: 1px solid #1e40af;
+      border-radius: 8px; padding: 1rem 1.25rem;
+      font-size: .95rem; margin: .75rem 0;
+      overflow-x: auto;
+    }
+
+    /* ── Controls ─────────────────────────────────────────── */
+    .controls {
+      display: flex; flex-wrap: wrap; gap: .75rem;
+      align-items: flex-end; margin-bottom: 1rem;
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: .25rem; }
+    .ctrl-group label { font-size: .78rem; color: #94a3b8; }
+    input[type="number"], input[type="range"], select {
+      background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+      border-radius: 6px; padding: .35rem .6rem; font-size: .85rem;
+      outline: none; transition: border-color .2s;
+    }
+    input[type="number"]:focus, select:focus { border-color: #3b82f6; }
+    input[type="number"] { width: 100px; }
+    input[type="range"] { cursor: pointer; accent-color: #3b82f6; }
+
+    button {
+      background: #2563eb; color: #fff; border: none;
+      border-radius: 8px; padding: .45rem 1rem; font-size: .85rem;
+      cursor: pointer; transition: background .2s;
+    }
+    button:hover  { background: #1d4ed8; }
+    button:active { background: #1e40af; }
+    button.secondary {
+      background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+    }
+    button.secondary:hover { background: #334155; color: #e2e8f0; }
+
+    /* ── Chart containers ─────────────────────────────────── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1rem;
+    }
+    .chart-wrap {
+      background: #0f172a; border: 1px solid #1e293b;
+      border-radius: 8px; padding: .75rem;
+    }
+    .chart-wrap canvas { width: 100% !important; }
+
+    /* ── Info table ───────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    thead th {
+      background: #0f172a; color: #60a5fa;
+      padding: .5rem .75rem; text-align: left;
+      border-bottom: 1px solid #334155;
+    }
+    tbody tr { border-bottom: 1px solid #1e293b; }
+    tbody td { padding: .45rem .75rem; }
+    tbody tr:hover { background: #1e293b; }
+    .good  { color: #4ade80; }
+    .warn  { color: #fbbf24; }
+    .bad   { color: #f87171; }
+
+    /* ── Loader / status ──────────────────────────────────── */
+    .status {
+      font-size: .82rem; color: #64748b; margin-top: .5rem;
+    }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #334155; border-top-color: #3b82f6;
+      border-radius: 50%; animation: spin .7s linear infinite;
+      vertical-align: middle; margin-right: .4rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Schema image ─────────────────────────────────────── */
+    .schema-svg { display: block; margin: .75rem auto; max-width: 420px; }
+
+    /* ── Responsive ───────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>М6 — Фильтрация сигналов</h1>
+    <p>RC Фильтр нижних частот (ФНЧ) · R = 1 кОм · C = 1 мкФ · f<sub>c</sub> ≈ 159 Гц</p>
+    <nav>
+      <a href="#theory"    class="active">Теория</a>
+      <a href="#bode">АЧХ / ФЧХ</a>
+      <a href="#transient">Переходный процесс</a>
+      <a href="#compare">Сравнение</a>
+      <a href="#square">Прямоугольник</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 0. Теория                                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="theory">
+  <div class="container">
+    <h2>Теория <span class="badge">SymPy</span></h2>
+
+    <div class="card">
+      <h3>Схема RC-фильтра нижних частот</h3>
+      <!-- SVG схема -->
+      <svg class="schema-svg" viewBox="0 0 420 130" fill="none"
+           xmlns="http://www.w3.org/2000/svg">
+        <!-- Провода -->
+        <line x1="20" y1="50" x2="90" y2="50" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="160" y1="50" x2="230" y2="50" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="230" y1="50" x2="390" y2="50" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="230" y1="50" x2="230" y2="80" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="230" y1="100" x2="230" y2="110" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="20" y1="110" x2="390" y2="110" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="20" y1="50" x2="20" y2="110" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="390" y1="50" x2="390" y2="110" stroke="#60a5fa" stroke-width="2"/>
+        <!-- Резистор R -->
+        <rect x="90" y="40" width="70" height="20" rx="3"
+              fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+        <text x="125" y="55" fill="#f59e0b" font-size="13" text-anchor="middle">R</text>
+        <!-- Конденсатор C (две пластины) -->
+        <line x1="220" y1="80" x2="240" y2="80" stroke="#34d399" stroke-width="3"/>
+        <line x1="220" y1="100" x2="240" y2="100" stroke="#34d399" stroke-width="3"/>
+        <text x="255" y="94" fill="#34d399" font-size="13">C</text>
+        <!-- Метки -->
+        <text x="20" y="35" fill="#94a3b8" font-size="12">U_in</text>
+        <text x="370" y="35" fill="#94a3b8" font-size="12">U_out</text>
+        <!-- Стрелки -->
+        <circle cx="20"  cy="50"  r="4" fill="#60a5fa"/>
+        <circle cx="390" cy="50"  r="4" fill="#60a5fa"/>
+        <circle cx="20"  cy="110" r="4" fill="#60a5fa"/>
+        <circle cx="390" cy="110" r="4" fill="#60a5fa"/>
+      </svg>
+
+      <div class="formula-box" id="sympy-result">
+        <span class="spinner"></span> Загрузка аналитических выражений…
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h3>Дифференциальное уравнение</h3>
+      <div class="formula-box">
+        $$RC\,\frac{dU_\text{out}}{dt} + U_\text{out} = U_\text{in}(t)$$
+        <br>
+        $$\text{Численное решение: метод Рунге–Кутта 4/5 (RK45, SciPy)}$$
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 1. АЧХ / ФЧХ                                                            -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="bode">
+  <div class="container">
+    <h2>АЧХ и ФЧХ (аналитический расчёт)</h2>
+
+    <div class="card">
+      <div class="controls">
+        <div class="ctrl-group">
+          <label>f мин (Гц)</label>
+          <input type="number" id="bode-fmin" value="1" min="0.1" step="1">
+        </div>
+        <div class="ctrl-group">
+          <label>f макс (Гц)</label>
+          <input type="number" id="bode-fmax" value="100000" min="100" step="100">
+        </div>
+        <button onclick="loadBode()">Построить</button>
+      </div>
+      <p class="status" id="bode-status"></p>
+    </div>
+
+    <div class="chart-grid" style="margin-top:1rem">
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">АЧХ — |H(ω)|</h3>
+        <canvas id="chart-afc" height="220"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">ФЧХ — φ(ω), °</h3>
+        <canvas id="chart-pfc" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 2. Переходный процесс                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="transient">
+  <div class="container">
+    <h2>Переходный процесс при включении гармоники</h2>
+
+    <div class="card">
+      <div class="controls">
+        <div class="ctrl-group">
+          <label>Частота f₀ (Гц)</label>
+          <input type="number" id="tr-f0" value="159" min="1" step="1">
+        </div>
+        <div class="ctrl-group">
+          <label>Амплитуда U₀ (В)</label>
+          <input type="number" id="tr-u0" value="1" min="0.1" step="0.1">
+        </div>
+        <div class="ctrl-group">
+          <label>Число периодов</label>
+          <input type="number" id="tr-periods" value="10" min="2" step="1">
+        </div>
+        <button onclick="loadTransient()">Рассчитать</button>
+      </div>
+      <p class="status" id="tr-status"></p>
+    </div>
+
+    <div class="chart-wrap" style="margin-top:1rem">
+      <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">
+        U<sub>in</sub>(t) и U<sub>out</sub>(t)</h3>
+      <canvas id="chart-transient" height="200"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 3. Сравнение числового и аналитического                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="compare">
+  <div class="container">
+    <h2>Сравнение: численный расчёт vs аналитика</h2>
+
+    <div class="card">
+      <div class="controls">
+        <div class="ctrl-group">
+          <label>f мин (Гц)</label>
+          <input type="number" id="cmp-fmin" value="10" min="1" step="1">
+        </div>
+        <div class="ctrl-group">
+          <label>f макс (Гц)</label>
+          <input type="number" id="cmp-fmax" value="10000" min="100" step="100">
+        </div>
+        <div class="ctrl-group">
+          <label>Точек</label>
+          <input type="number" id="cmp-npts" value="12" min="3" max="30" step="1">
+        </div>
+        <div class="ctrl-group">
+          <label>U₀ (В)</label>
+          <input type="number" id="cmp-u0" value="1" min="0.1" step="0.1">
+        </div>
+        <button onclick="loadCompare()">Рассчитать</button>
+      </div>
+      <p class="status" id="cmp-status"></p>
+    </div>
+
+    <div class="chart-grid" style="margin-top:1rem">
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">АЧХ: числовое vs аналитика</h3>
+        <canvas id="chart-cmp-amp" height="220"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">ФЧХ: числовое vs аналитика</h3>
+        <canvas id="chart-cmp-phase" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem; overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>f, Гц</th>
+            <th>|H| числ.</th>
+            <th>|H| аналит.</th>
+            <th>φ числ., °</th>
+            <th>φ аналит., °</th>
+            <th>Δ|H|, %</th>
+          </tr>
+        </thead>
+        <tbody id="cmp-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- 4. Прямоугольные импульсы                                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section id="square">
+  <div class="container">
+    <h2>Прямоугольные импульсы — спектральный анализ</h2>
+
+    <div class="card">
+      <div class="controls">
+        <div class="ctrl-group">
+          <label>Частота f₀ (Гц)</label>
+          <input type="number" id="sq-f0" value="300" min="1" step="10">
+        </div>
+        <div class="ctrl-group">
+          <label>Амплитуда U₀ (В)</label>
+          <input type="number" id="sq-u0" value="1" min="0.1" step="0.1">
+        </div>
+        <div class="ctrl-group">
+          <label>Скважность (0–1)</label>
+          <input type="number" id="sq-duty" value="0.5" min="0.1" max="0.9" step="0.05">
+        </div>
+        <div class="ctrl-group">
+          <label>Гармоник</label>
+          <input type="number" id="sq-harm" value="25" min="5" max="50" step="5">
+        </div>
+        <button onclick="loadSquare()">Рассчитать</button>
+      </div>
+      <p class="status" id="sq-status"></p>
+    </div>
+
+    <div class="chart-wrap" style="margin-top:1rem">
+      <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">Временной сигнал (установившийся режим)</h3>
+      <canvas id="chart-sq-time" height="200"></canvas>
+    </div>
+
+    <div class="chart-grid" style="margin-top:1rem">
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">Спектр U<sub>out</sub>: числ. FFT vs аналитика</h3>
+        <canvas id="chart-sq-spec-out" height="220"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3 style="color:#93c5fd;font-size:.9rem;margin-bottom:.5rem">Спектр U<sub>in</sub>: числ. FFT vs аналитика</h3>
+        <canvas id="chart-sq-spec-in" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Scripts                                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ── Utility ──────────────────────────────────────────────────────────── */
+const chartInstances = {};
+
+function mkChart(id, type, labels, datasets, xType = "linear", xLog = false) {
+  if (chartInstances[id]) chartInstances[id].destroy();
+  const ctx = document.getElementById(id).getContext("2d");
+  chartInstances[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      animation: false,
+      responsive: true,
+      scales: {
+        x: {
+          type: xLog ? "logarithmic" : xType,
+          ticks: { color: "#94a3b8", maxTicksLimit: 10 },
+          grid: { color: "#1e293b" }
+        },
+        y: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "#1e293b" }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: "#94a3b8", boxWidth: 14 } },
+        tooltip: { mode: "index", intersect: false }
+      }
+    }
+  });
+}
+
+function setStatus(id, msg, loading = false) {
+  const el = document.getElementById(id);
+  el.innerHTML = loading
+    ? `<span class="spinner"></span>${msg}`
+    : msg;
+}
+
+async function apiFetch(url, options = {}) {
+  const r = await fetch(url, {
+    headers: { "Content-Type": "application/json" },
+    ...options
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+/* ── 0. Theory (SymPy) ────────────────────────────────────────────────── */
+async function loadTheory() {
+  try {
+    const d = await apiFetch("/api/sympy_transfer_function");
+    document.getElementById("sympy-result").innerHTML = `
+      <b>Передаточная функция (SymPy):</b><br>
+      $$H(j\\omega) = ${d.H_latex}$$<br>
+      <b>АЧХ:</b> $|H(\\omega)| = ${d.amplitude_latex}$<br>
+      <b>ФЧХ:</b> $\\varphi(\\omega) = ${d.phase_latex}$<br><br>
+      Параметры: R&nbsp;=&nbsp;${d.R}&nbsp;Ом, &nbsp;
+      C&nbsp;=&nbsp;${(d.C * 1e6).toFixed(1)}&nbsp;мкФ, &nbsp;
+      RC&nbsp;=&nbsp;${(d.RC * 1e3).toFixed(2)}&nbsp;мс, &nbsp;
+      <b>f<sub>c</sub>&nbsp;=&nbsp;${d.f_cutoff.toFixed(1)}&nbsp;Гц</b>
+    `;
+    if (window.MathJax) MathJax.typesetPromise();
+  } catch (e) {
+    document.getElementById("sympy-result").textContent = "Ошибка: " + e.message;
+  }
+}
+
+/* ── 1. Bode (AFC + PFC) ──────────────────────────────────────────────── */
+async function loadBode() {
+  const fmin = document.getElementById("bode-fmin").value;
+  const fmax = document.getElementById("bode-fmax").value;
+  setStatus("bode-status", "Вычисление…", true);
+  try {
+    const d = await apiFetch(`/api/frequency_response?f_min=${fmin}&f_max=${fmax}&n_pts=500`);
+    setStatus("bode-status",
+      `f<sub>c</sub> = ${d.f_cutoff.toFixed(1)} Гц &nbsp;|&nbsp; RC = ${(d.RC*1e3).toFixed(2)} мс`);
+
+    mkChart("chart-afc", "line", d.f,
+      [{ label: "|H(ω)|", data: d.amplitude, borderColor: "#3b82f6",
+         backgroundColor: "rgba(59,130,246,.15)", fill: true,
+         tension: .4, pointRadius: 0, borderWidth: 2 }],
+      "linear", true);
+
+    mkChart("chart-pfc", "line", d.f,
+      [{ label: "φ(ω), °", data: d.phase_deg, borderColor: "#a78bfa",
+         backgroundColor: "rgba(167,139,250,.12)", fill: true,
+         tension: .4, pointRadius: 0, borderWidth: 2 }],
+      "linear", true);
+  } catch (e) {
+    setStatus("bode-status", "Ошибка: " + e.message);
+  }
+}
+
+/* ── 2. Transient ─────────────────────────────────────────────────────── */
+async function loadTransient() {
+  const f0  = +document.getElementById("tr-f0").value;
+  const U0  = +document.getElementById("tr-u0").value;
+  const n   = +document.getElementById("tr-periods").value;
+  setStatus("tr-status", "Решение ОДУ…", true);
+  try {
+    const d = await apiFetch("/api/transient", {
+      method: "POST",
+      body: JSON.stringify({ f0, U0, n_periods: n, pts_per_period: 300 })
+    });
+    setStatus("tr-status",
+      `f₀ = ${d.f0} Гц | T = ${(d.T*1e3).toFixed(3)} мс | ${n} периодов`);
+
+    // Прореживаем для скорости отрисовки
+    const step = Math.max(1, Math.floor(d.t.length / 2000));
+    const ts = d.t.filter((_,i) => i % step === 0);
+    const ui = d.u_in.filter((_,i)  => i % step === 0);
+    const uo = d.u_out.filter((_,i) => i % step === 0);
+    const labels = ts.map(v => (v*1e3).toFixed(3));
+
+    mkChart("chart-transient", "line", labels, [
+      { label: "U_in(t)", data: ui, borderColor: "#f59e0b",
+        pointRadius: 0, borderWidth: 1.5, tension: .2 },
+      { label: "U_out(t)", data: uo, borderColor: "#34d399",
+        pointRadius: 0, borderWidth: 2, tension: .4 }
+    ]);
+    chartInstances["chart-transient"].options.scales.x.title =
+      { display: true, text: "t, мс", color: "#94a3b8" };
+    chartInstances["chart-transient"].update();
+  } catch (e) {
+    setStatus("tr-status", "Ошибка: " + e.message);
+  }
+}
+
+/* ── 3. Compare ───────────────────────────────────────────────────────── */
+async function loadCompare() {
+  const fmin = +document.getElementById("cmp-fmin").value;
+  const fmax = +document.getElementById("cmp-fmax").value;
+  const npts = +document.getElementById("cmp-npts").value;
+  const U0   = +document.getElementById("cmp-u0").value;
+
+  const freqs = Array.from({length: npts}, (_,i) =>
+    parseFloat((fmin * Math.pow(fmax/fmin, i/(npts-1))).toFixed(2))
+  );
+
+  setStatus("cmp-status", "Численное решение ОДУ для каждой частоты…", true);
+  try {
+    const d = await apiFetch("/api/harmonic_response", {
+      method: "POST",
+      body: JSON.stringify({ frequencies: freqs, U0, n_periods: 25, n_steady: 5 })
+    });
+    setStatus("cmp-status", `Расчёт завершён · ${npts} частот`);
+
+    const labels = d.frequencies.map(f => f.toFixed(1));
+
+    mkChart("chart-cmp-amp", "line", labels, [
+      { label: "|H| числ.", data: d.amp_numerical, borderColor: "#f87171",
+        pointRadius: 5, borderWidth: 2, tension: .3 },
+      { label: "|H| аналит.", data: d.amp_analytical, borderColor: "#3b82f6",
+        pointRadius: 3, borderWidth: 2, borderDash: [6,3], tension: .4 }
+    ]);
+
+    mkChart("chart-cmp-phase", "line", labels, [
+      { label: "φ числ., °", data: d.phase_numerical, borderColor: "#fb923c",
+        pointRadius: 5, borderWidth: 2, tension: .3 },
+      { label: "φ аналит., °", data: d.phase_analytical, borderColor: "#a78bfa",
+        pointRadius: 3, borderWidth: 2, borderDash: [6,3], tension: .4 }
+    ]);
+
+    // Table
+    const tbody = document.getElementById("cmp-table-body");
+    tbody.innerHTML = d.frequencies.map((f, i) => {
+      const err = Math.abs((d.amp_numerical[i] - d.amp_analytical[i]) /
+                  (d.amp_analytical[i] + 1e-12) * 100);
+      const cls = err < 2 ? "good" : err < 8 ? "warn" : "bad";
+      return `<tr>
+        <td>${f.toFixed(1)}</td>
+        <td>${d.amp_numerical[i].toFixed(4)}</td>
+        <td>${d.amp_analytical[i].toFixed(4)}</td>
+        <td>${d.phase_numerical[i].toFixed(1)}</td>
+        <td>${d.phase_analytical[i].toFixed(1)}</td>
+        <td class="${cls}">${err.toFixed(2)}</td>
+      </tr>`;
+    }).join("");
+  } catch (e) {
+    setStatus("cmp-status", "Ошибка: " + e.message);
+  }
+}
+
+/* ── 4. Square wave ───────────────────────────────────────────────────── */
+async function loadSquare() {
+  const f0   = +document.getElementById("sq-f0").value;
+  const U0   = +document.getElementById("sq-u0").value;
+  const duty = +document.getElementById("sq-duty").value;
+  const harm = +document.getElementById("sq-harm").value;
+
+  setStatus("sq-status", "Решение ОДУ + FFT…", true);
+  try {
+    const d = await apiFetch("/api/square_wave", {
+      method: "POST",
+      body: JSON.stringify({ f0, U0, duty, n_periods: 35, pts_per_period: 800,
+                             n_harmonics: harm })
+    });
+    setStatus("sq-status",
+      `f₀ = ${d.f0} Гц | T = ${(d.T*1e3).toFixed(3)} мс | скважность ${duty}`);
+
+    // Временной сигнал
+    const step = Math.max(1, Math.floor(d.t_ss.length / 2000));
+    const ts   = d.t_ss.filter((_,i)  => i % step === 0);
+    const ui   = d.u_in_ss.filter((_,i)  => i % step === 0);
+    const uo   = d.u_out_ss.filter((_,i) => i % step === 0);
+    mkChart("chart-sq-time", "line",
+      ts.map(v => (v*1e3).toFixed(3)), [
+        { label: "U_in(t)", data: ui, borderColor: "#f59e0b",
+          pointRadius: 0, borderWidth: 1.5, tension: .1 },
+        { label: "U_out(t)", data: uo, borderColor: "#34d399",
+          pointRadius: 0, borderWidth: 2, tension: .3 }
+      ]);
+
+    // Спектр U_out
+    mkChart("chart-sq-spec-out", "bar", d.freqs_an.map(f => f.toFixed(0)), [
+      { label: "FFT (числ.)", data: matchSpectra(d.freqs_num, d.amp_out_num, d.freqs_an),
+        backgroundColor: "rgba(248,113,113,.7)", borderColor: "#f87171",
+        borderWidth: 1 },
+      { label: "Аналитика", data: d.amp_out_an,
+        backgroundColor: "rgba(59,130,246,.5)", borderColor: "#3b82f6",
+        borderWidth: 1 }
+    ]);
+
+    // Спектр U_in
+    mkChart("chart-sq-spec-in", "bar", d.freqs_an.map(f => f.toFixed(0)), [
+      { label: "FFT (числ.)", data: matchSpectra(d.freqs_num, d.amp_in_num, d.freqs_an),
+        backgroundColor: "rgba(251,191,36,.7)", borderColor: "#fbbf24",
+        borderWidth: 1 },
+      { label: "Аналитика", data: d.amp_in_an,
+        backgroundColor: "rgba(167,139,250,.5)", borderColor: "#a78bfa",
+        borderWidth: 1 }
+    ]);
+  } catch (e) {
+    setStatus("sq-status", "Ошибка: " + e.message);
+  }
+}
+
+/* Для каждой аналитической частоты ищем ближайший бин в числовом спектре */
+function matchSpectra(fNum, aNum, fTarget) {
+  return fTarget.map(ft => {
+    let best = 0, minD = Infinity;
+    for (let i = 0; i < fNum.length; i++) {
+      const d = Math.abs(fNum[i] - ft);
+      if (d < minD) { minD = d; best = aNum[i]; }
+    }
+    return minD < ft * 0.2 ? best : 0;
+  });
+}
+
+/* ── Init ─────────────────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  loadTheory();
+  loadBode();
+  loadTransient();
+});
+
+// nav highlight on scroll
+const sections = document.querySelectorAll("section[id]");
+const navLinks = document.querySelectorAll("nav a");
+window.addEventListener("scroll", () => {
+  let cur = "";
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) cur = s.id; });
+  navLinks.forEach(a => {
+    a.classList.toggle("active", a.getAttribute("href") === "#" + cur);
+  });
+}, { passive: true });
+</script>
+</body>
+</html>
